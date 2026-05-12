@@ -1,0 +1,14 @@
+# Ambiente Virtual
+venv/
+ENV/
+env/
+
+# Arquivos de configuração sensíveis
+.env
+
+# Banco de dados local (SQLite)
+*.db
+*.sqlite3
+
+# Pastas do Python
+__pycache__/
