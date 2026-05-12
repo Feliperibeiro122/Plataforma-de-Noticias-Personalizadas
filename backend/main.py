@@ -1,4 +1,8 @@
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi import security
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
@@ -6,15 +10,19 @@ from jose import JWTError, jwt
 import os
 from dotenv import load_dotenv
 
+import services
 import models 
 import schemas
 from database import engine, get_db
 
 load_dotenv()
 
+
+
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
+auth_scheme = HTTPBearer()
 
 def create_acess_token(data: dict):
     to_encode = data.copy()
@@ -22,6 +30,19 @@ def create_acess_token(data: dict):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode,SECRET_KEY,algorithm=ALGORITHM)
     return encoded_jwt
+
+def get_current_user(token: HTTPAuthorizationCredentials = Depends(auth_scheme), db: Session = Depends(get_db)):
+    try:
+        payload = jwt.decode(token.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="Token inválido")
+        user = db.query(models.User).filter(models.User.id == int(user_id)).first()
+        if user is None:
+            raise HTTPException(status_code=401, detail="Usuário não encontrado")
+        return user
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token inválido ou expirado")
 
 # Configuração para criptografia de senha
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated = "auto")
@@ -90,6 +111,20 @@ def update_preferences(user_id: int, pref: schemas.UserPreferences, db: Session 
     db.refresh(db_user)
 
     return{"message": "Preferências atualizadas!", "preferences": db_user.preferences}
+
+@app.get("/feed")
+def get_user_feed(current_user: models.User = Depends(get_current_user)):
+    #1. Pega as preferências do usuário logado
+    user_prefs = current_user.preferences
+
+    #2. Chama o serviço de notícias criado
+    noticias = services.fetch_news_by_preferences(user_prefs)
+
+    return {
+        "usuario": current_user.email,
+        "preferencias_usadas": user_prefs,
+        "noticias":noticias
+    }
 
 @app.get("/")
 def home():
