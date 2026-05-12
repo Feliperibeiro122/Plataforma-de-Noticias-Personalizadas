@@ -17,3 +17,10 @@ class UserResponse(BaseModel):
     
 class UserPreferences(BaseModel):
     categories: list[str]
+
+class Token(BaseModel):
+    acess_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    user_id: int | None = None

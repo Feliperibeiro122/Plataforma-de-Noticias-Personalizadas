@@ -1,10 +1,27 @@
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
+from datetime import datetime, timedelta
+from jose import JWTError, jwt
+import os
+from dotenv import load_dotenv
 
 import models 
 import schemas
 from database import engine, get_db
+
+load_dotenv()
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
+
+def create_acess_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.utcnow() +timedelta(minutes = ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode,SECRET_KEY,algorithm=ALGORITHM)
+    return encoded_jwt
 
 # Configuração para criptografia de senha
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated = "auto")
@@ -13,6 +30,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated = "auto")
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(tittle="Trackland News API")
+
 
 @app.post("/register", response_model=schemas.UserResponse)
 def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
@@ -36,34 +54,24 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db.refresh(new_user)
     return new_user
 
-@app.post("/login")
+@app.post("/login",response_model=schemas.Token)
 def login(user_credentials: schemas.UserCreate, db: Session = Depends(get_db)):
     # 1. Busca o usuário no banco pelo e-mail
     user = db.query(models.User).filter(models.User.email == user_credentials.email).first()
 
     #2. Se não achar usuário no banco
-    if not user:
+    if not user or not pwd_context.verify(user_credentials.password, user.hashed_password):
         raise HTTPException(
             status_code=401,
             detail="E-mail ou senha inválidos"
         )
     
-    #3. Verifica se a senha bate com o Hash do banco, comparando a senha aberta com a criptografada
-    if not pwd_context.verify(user_credentials.password, user.hashed_password):
-        raise HTTPException(
-            status_code=401,
-            detail="E-mail ou senha inválidos"
-        )
-    
-    #4. Retorno em caso de sucesso
-    return {
-        "message": "Login realizado com sucesso",
-        "user": {
-            "id": user.id,
-            "email": user.email,
-            "preferences": user.preferences
-        }
-    }
+    #4. Gera o Token
+    token = create_acess_token(data={"sub": str(user.id)})
+
+    #5. Retorna o Token único
+    return {"acess_token":token, "token_type": "bearer"}
+
 
 @app.put("/preferences/{user_id}")
 def update_preferences(user_id: int, pref: schemas.UserPreferences, db: Session = Depends(get_db)):
