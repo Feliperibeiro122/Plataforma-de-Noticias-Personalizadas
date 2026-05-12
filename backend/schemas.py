@@ -15,3 +15,5 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True
     
+class UserPreferences(BaseModel):
+    categories: list[str]

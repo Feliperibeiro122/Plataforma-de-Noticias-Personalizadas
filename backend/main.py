@@ -65,6 +65,24 @@ def login(user_credentials: schemas.UserCreate, db: Session = Depends(get_db)):
         }
     }
 
+@app.put("/preferences/{user_id}")
+def update_preferences(user_id: int, pref: schemas.UserPreferences, db: Session = Depends(get_db)):
+    #1. Busca o usuário pelo ID
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+
+    if not db_user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    
+    #2. Converte a lista em uma string
+    preferences_string = ", ".join(pref.categories)
+
+    #3. Atualiza o campo no banco
+    db_user.preferences = preferences_string
+    db.commit()
+    db.refresh(db_user)
+
+    return{"message": "Preferências atualizadas!", "preferences": db_user.preferences}
+
 @app.get("/")
 def home():
     return{"status": "API Online", "message": "Bem-vindo à Plataforma de Notícias"}
