@@ -36,6 +36,35 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db.refresh(new_user)
     return new_user
 
+@app.post("/login")
+def login(user_credentials: schemas.UserCreate, db: Session = Depends(get_db)):
+    # 1. Busca o usuário no banco pelo e-mail
+    user = db.query(models.User).filter(models.User.email == user_credentials.email).first()
+
+    #2. Se não achar usuário no banco
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="E-mail ou senha inválidos"
+        )
+    
+    #3. Verifica se a senha bate com o Hash do banco, comparando a senha aberta com a criptografada
+    if not pwd_context.verify(user_credentials.password, user.hashed_password):
+        raise HTTPException(
+            status_code=401,
+            detail="E-mail ou senha inválidos"
+        )
+    
+    #4. Retorno em caso de sucesso
+    return {
+        "message": "Login realizado com sucesso",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "preferences": user.preferences
+        }
+    }
+
 @app.get("/")
 def home():
     return{"status": "API Online", "message": "Bem-vindo à Plataforma de Notícias"}
