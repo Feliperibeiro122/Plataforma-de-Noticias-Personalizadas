@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from database import Base
 
@@ -8,8 +9,9 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
-    preferences = Column(String, default="")# Salvaremos as categorias separadas por vírgula
+    preferences = Column(String, default="tecnologia")# Salvaremos as categorias separadas por vírgula
 
+    history = relationship("History", back_populates="owner")
     # --- TABELAS DOS DIFERENCIAIS (OPCIONAIS DO EDITAL) ---
 
 class Favorite(Base):
@@ -26,5 +28,9 @@ class History(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
+    title = Column(String)
     url = Column(String)
-    viewed_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    timestamp = Column(DateTime, default=datetime.utcnow)
+
+    #Relacionamento: O histórico pertence a um usuário
+    owner = relationship("User", back_populates="history")

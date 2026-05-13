@@ -126,6 +126,33 @@ def get_user_feed(current_user: models.User = Depends(get_current_user)):
         "noticias":noticias
     }
 
+@app.post("/history", response_model=schemas.History)
+def add_to_history(history_data: schemas.HistoryCreate, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    #verificação de duplicata: Caso exista essa URL para x usuário, ela não será salva novamente
+    already_exists = db.query(models.History).filter(
+        models.History.user_id == current_user.id,
+        models.History.url == history_data.url
+    ).first()
+
+    if already_exists:
+        return already_exists
+    
+    new_history = models.History(
+        title = history_data.title,
+        url = history_data.url,
+        user_id = current_user.id
+    )
+    db.add(new_history)
+    db.commit()
+    db.refresh(new_history)
+    return new_history
+
+#2. Rota para listar o histórico do usuário logado
+@app.get("/history", response_model=list[schemas.History])
+def get_user_history(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    #Retorna o hitórico do mais recente para o mais antigo
+    return db.query(models.History).filter(models.History.user_id == current_user.id).order_by(models.History.timestamp.desc()).all()
+
 @app.get("/")
 def home():
     return{"status": "API Online", "message": "Bem-vindo à Plataforma de Notícias"}
