@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi import security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.middleware.cors import CORSMiddleware
 
 
 from sqlalchemy.orm import Session
@@ -52,6 +53,15 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(tittle="Trackland News API")
 
+# Configuração do CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins = ["*"],   # Em produção, vou colocar o link do site aqui
+    allow_credentials = True,
+    allow_methods=["*"], # Permite GET, POST, PUT, DELETE, etc.
+    allow_headers=["*"], # Permite todos os cabeçalhos (como o de Autenticação)
+)
+
 
 @app.post("/register", response_model=schemas.UserResponse)
 def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
@@ -66,7 +76,8 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     #Criar o objeto do usuário
     new_user = models.User(
         email = user.email,
-        hashed_password=hashed_password
+        hashed_password=hashed_password,
+        preferences=getattr(user, 'preferences', 'tecnologia')
     )
 
     #4 Salvar no Banco

@@ -6,6 +6,7 @@ from datetime import datetime
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
+    preferences: str = "tecnologia"
 
 # O que a API devolve (não devolvemos a senha!)
 class UserResponse(BaseModel):
