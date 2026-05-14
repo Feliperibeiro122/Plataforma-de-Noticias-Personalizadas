@@ -20,8 +20,9 @@ class Favorite(Base):
     id = Column(Integer, primary_key=True,index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     tittle = Column(String)
+    summary = Column(String)
     url = Column(String)
-    source = Column(String)
+    category = Column(String)
 
 class History(Base):
     __tablename__ = "history"
