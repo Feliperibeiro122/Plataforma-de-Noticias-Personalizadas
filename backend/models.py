@@ -20,8 +20,7 @@ class Favorite(Base):
 
     id = Column(Integer, primary_key=True,index=True)
     
-    tittle = Column(String)
-    summary = Column(String)
+    title = Column(String)
     url = Column(String)
     image_url = Column(String, nullable=True)
     
