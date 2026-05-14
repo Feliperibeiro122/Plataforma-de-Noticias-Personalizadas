@@ -118,11 +118,7 @@ const toggleFavorito = async (noticia) => {
 <template>
   <div class="login-container">
     
-    <div v-if="verificandoAuth" class="loading-screen">
-      <h1 class="neon-text">CARREGANDO...</h1>
-    </div>
-
-    <div v-else-if="!isLoggedIn" id="auth-form">
+   <div v-if="!isLoggedIn && !verificandoAuth" id="auth-form">
       <h1 class="neon-text">PLATAFORMA DE NOTÍCIAS</h1>
       <h2 id="form-title">{{ isLogin ? 'Login' : 'Cadastro' }}</h2>
       
@@ -145,24 +141,38 @@ const toggleFavorito = async (noticia) => {
       </p>
     </div>
 
-    <div v-else class="main-feed">
+    <div v-else-if="isLoggedIn || verificandoAuth" class="main-feed">
       <header class="feed-header">
         <h1 class="neon-text">SEU FEED</h1>
-        <button @click="logout" class="logout-btn">Sair</button>
+        <button v-if="!verificandoAuth" @click="logout" class="logout-btn">Sair</button>
       </header>
 
       <div class="feed-container">
-        <div v-for="item in noticias" :key="item.url" class="news-card">
-          <h3 class="neon-text-small">{{ item.title }}</h3>
-          <p>{{ item.description }}</p>
-
-          <div class="card-actions">
-            <a :href="item.url" target="_blank" class="read-more">Ler notícia</a>
-            <button @click="toggleFavorito(item)" class="fav-btn">
-              {{ item.favorito ? '⭐' : '☆' }}
-            </button>
+        <template v-if="verificandoAuth">
+          <div v-for="n in 6" :key="n" class="news-card">
+            <div class="skeleton skeleton-title"></div>
+            <div class="skeleton skeleton-text"></div>
+            <div class="skeleton skeleton-text" style="width: 60%"></div>
+            <div class="card-actions">
+              <div class="skeleton skeleton-btn"></div>
+              <div class="skeleton" style="width: 24px; height: 24px; border-radius: 50%"></div>
+            </div>
           </div>
-        </div>
+        </template>
+
+        <template v-else>
+          <div v-for="item in noticias" :key="item.url" class="news-card">
+            <h3 class="neon-text-small">{{ item.title }}</h3>
+            <p>{{ item.description }}</p>
+
+            <div class="card-actions">
+              <a :href="item.url" target="_blank" class="read-more">Ler notícia</a>
+              <button @click="toggleFavorito(item)" class="fav-btn">
+                {{ item.favorito ? '⭐' : '☆' }}
+              </button>
+            </div>
+          </div>
+        </template>
       </div>
     </div>
 
@@ -195,7 +205,7 @@ const toggleFavorito = async (noticia) => {
       align-items: center;
       padding: 40px 20px;
       width: 100%;
-      max-width: 800px; /* Evita que o feed fique largo demais */
+      max-width: 800px;
   }
 
   .main-feed {
@@ -216,7 +226,6 @@ const toggleFavorito = async (noticia) => {
       margin-top: 20px;
   }
 
-  /* Isso garante que o card não "estoure" o layout */
   .news-card {
       background: var(--card);
       border: 1px solid #334155;
@@ -249,7 +258,7 @@ const toggleFavorito = async (noticia) => {
 
   .fav-btn {
       background: none;
-      width: auto; /* Para o botão de estrela não virar um blocão */
+      width: auto; 
       padding: 5px;
       margin: 0;
       font-size: 1.2rem;
@@ -310,7 +319,7 @@ const toggleFavorito = async (noticia) => {
   }
 
   .feed-header {
-    display: grid; /* Mudamos de flex para grid para controle total */
+    display: grid; 
     grid-template-columns: 1fr auto 1fr; /* 3 colunas: as das pontas ocupam o mesmo espaço */
     align-items: center;
     width: 100%;
@@ -360,7 +369,7 @@ const toggleFavorito = async (noticia) => {
   }
 
   .feed-header h1 {
-    font-size: 1.2rem;    /* Diminui um pouco o título para caber */
+    font-size: 1.2rem;    
     text-align: center;
   }
 
@@ -393,10 +402,65 @@ const toggleFavorito = async (noticia) => {
     position: static; /* O botão volta a ocupar o seu próprio espaço */
     transform: none;
     flex-shrink: 0;   /* Não deixa o botão encolher */
+    margin-right:20px
   }
   
   .feed-container {
     grid-template-columns: repeat(2, 1fr); /* 2 colunas de notícias no tablet */
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: -468px 0; }
+  100% { background-position: 468px 0; }
+}
+
+.skeleton {
+  background: #1e293b;
+  background-image: linear-gradient(
+    90deg,
+    #1e293b 0px,
+    #334155 40px,
+    #1e293b 80px
+  );
+  background-size: 800px 100%;
+  background-repeat: no-repeat;
+  display: inline-block;
+  line-height: 1;
+  widhth: 100%;
+  animation: shimmer 1.5s infinite linear;
+  border-radius: 4px;
+}
+
+/* Tamanhos dos esqueletos dentro do card */
+.skeleton-title {
+  height: 24px;
+  margin-bottom: 10px;
+  width: 80%; }
+.skeleton-text { 
+  height: 18px; /* Era 16px */
+  margin-bottom: 12px; 
+  width: 100%; 
+}
+.skeleton-btn { height: 30px; width: 100px; border-radius: 6px; }
+
+@media (min-width: 1025px) {
+  .news-card:has(.skeleton) {
+    min-height: 250px; /* Garante que o esqueleto não fique "magrinho" no PC */
+  }
+}
+
+@media (min-width: 1025px) {
+  .feed-container {
+    /* Aqui é onde a mágica da grade acontece no PC */
+    grid-template-columns: repeat(3, 1fr) !important; 
+  }
+  
+  /* Garante que o card do esqueleto tenha uma altura imponente no PC */
+  .news-card {
+    min-height: 280px;
+    display: flex;
+    flex-direction: column;
   }
 }
 </style>
