@@ -1,23 +1,25 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import axios from 'axios'
 
-import { onMounted } from 'vue'; // Verifique se já importou o onMounted
+import TheHeader from './components/TheHeader.vue'
+import SkeletonCard from './components/SkeletonCard.vue'
+import NewsCard from './components/NewsCard.vue'
 
 const verificandoAuth = ref(true); 
 
 onMounted(async () => {
   const token = localStorage.getItem('token');
   if (token) {
-    await carregarFeed(); // Espera carregar os dados ANTES de liberar a tela
+    await carregarFeed(); 
   }
-  verificandoAuth.value = false; // Só agora paramos de verificar
+  verificandoAuth.value = false; 
 });
 
 const logout = () => {
-  localStorage.removeItem('token'); // Remove a "chave" de acesso
-  isLoggedIn.value = false;         // Volta para a tela de login
-  noticias.value = [];              // Limpa os dados por segurança
+  localStorage.removeItem('token'); 
+  isLoggedIn.value = false;         
+  noticias.value = [];              
 };
 
 const isLogin = ref(true)
@@ -43,8 +45,8 @@ const handleAuth = async () => {
     if (isLogin.value) {
       localStorage.setItem('token', data.access_token)
       alert("Login realizado com sucesso!")
-      await carregarFeed() //chama a função que busca as noticias
-      isLoggedIn.value = true //Troca a tela de login para o feed
+      await carregarFeed() 
+      isLoggedIn.value = true 
     } else {
       alert("Cadastro ok! Faça Login.")
       isLogin.value = true
@@ -57,16 +59,13 @@ const handleAuth = async () => {
 const carregarFeed = async () => {
   try {
     const token = localStorage.getItem('token')
-    const response = await axios.get(`${API_URL}/feed`, {
-      headers: { Authorization: `Bearer ${token}`}
-    })
-
+    
     // 1. Busca as noticias
     const resFeed = await axios.get(`${API_URL}/feed`, {
       headers: {Authorization: `Bearer ${token}`}
     });
 
-    //2. Busca os seus favoritos salvos no banco
+    // 2. Busca os seus favoritos salvos no banco
     const resFavs = await axios.get(`${API_URL}/favorites`, {
       headers: {Authorization: `Bearer ${token}`}
     });
@@ -74,7 +73,6 @@ const carregarFeed = async () => {
     const listaNoticias = resFeed.data.noticias || resFeed.data;
     const meusFavoritos = resFavs.data;
 
-    //Acesso a chave "Noticias" definida no main.py e se o link da notícia estiver nos favoritos, marca como true
     noticias.value = listaNoticias.map(noticia => {
       const jaFavoritado = meusFavoritos.some(fav => fav.url === noticia.url);
       return { ...noticia, favorito: jaFavoritado};
@@ -88,12 +86,9 @@ const carregarFeed = async () => {
 const toggleFavorito = async (noticia) => {
   try {
     const token = localStorage.getItem('token');
-
-    //Inverte o estado visual primeiro para ser instantâneo para o usuário
     noticia.favorito = !noticia.favorito;
 
     if (noticia.favorito) {
-      //Se agora é favorito, salva no banco
       await axios.post(`${API_URL}/favorites`, {
         title: noticia.title,
         url: noticia.url,
@@ -103,12 +98,10 @@ const toggleFavorito = async (noticia) => {
       });
       console.log("Favorito salvo no banco");
     } else {
-      //Tarefa para depois: Criar a rota de DELETE no backend para remover
       console.log("Removido (lógica de delete ainda não integrada)");
     }
   } catch (error) {
     console.error("Erro ao salvar favorito:", error);
-    //Caso dê errom volta o estado da estrela para o anterior
     noticia.favorito = !noticia.favorito;
     alert("Não foi possível salvar o favorito");
   }
@@ -142,36 +135,20 @@ const toggleFavorito = async (noticia) => {
     </div>
 
     <div v-else-if="isLoggedIn || verificandoAuth" class="main-feed">
-      <header class="feed-header">
-        <h1 class="neon-text">SEU FEED</h1>
-        <button v-if="!verificandoAuth" @click="logout" class="logout-btn">Sair</button>
-      </header>
+      <TheHeader :verificandoAuth="verificandoAuth" @logout="logout" />
 
       <div class="feed-container">
         <template v-if="verificandoAuth">
-          <div v-for="n in 6" :key="n" class="news-card">
-            <div class="skeleton skeleton-title"></div>
-            <div class="skeleton skeleton-text"></div>
-            <div class="skeleton skeleton-text" style="width: 60%"></div>
-            <div class="card-actions">
-              <div class="skeleton skeleton-btn"></div>
-              <div class="skeleton" style="width: 24px; height: 24px; border-radius: 50%"></div>
-            </div>
-          </div>
+          <SkeletonCard v-for="n in 6" :key="n" />
         </template>
 
         <template v-else>
-          <div v-for="item in noticias" :key="item.url" class="news-card">
-            <h3 class="neon-text-small">{{ item.title }}</h3>
-            <p>{{ item.description }}</p>
-
-            <div class="card-actions">
-              <a :href="item.url" target="_blank" class="read-more">Ler notícia</a>
-              <button @click="toggleFavorito(item)" class="fav-btn">
-                {{ item.favorito ? '⭐' : '☆' }}
-              </button>
-            </div>
-          </div>
+          <NewsCard 
+            v-for="item in noticias" 
+            :key="item.url" 
+            :item="item"
+            @toggle-fav="toggleFavorito"
+          />
         </template>
       </div>
     </div>
@@ -181,10 +158,9 @@ const toggleFavorito = async (noticia) => {
 
 <style>
   :root {
-
-    --primary: #6366f1; /* Um roxo/azul moderno */
-    --bg: #0f172a;      /* Azul marinho bem escuro */
-    --card: #1e293b;    /* Cinza azulado para o formulário */
+    --primary: #6366f1; 
+    --bg: #0f172a;      
+    --card: #1e293b;    
     --text: #f8fafc;
   }
 
@@ -193,7 +169,7 @@ const toggleFavorito = async (noticia) => {
       color: var(--text);
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
       margin: 0;
-      min-height: 100vh; /* Usa no mínimo a altura da tela, mas cresce se precisar */
+      min-height: 100vh; 
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -210,7 +186,7 @@ const toggleFavorito = async (noticia) => {
 
   .main-feed {
       width: 100%;
-      max-width: 1200px; /* Largura máxima confortável */
+      max-width: 1200px; 
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -219,7 +195,6 @@ const toggleFavorito = async (noticia) => {
 
   .feed-container {
       display: grid;
-      /* auto-fit: preenche o espaço / minmax: não deixa o card ficar menor que 280px */
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 20px;
       width: 100%;
@@ -231,10 +206,11 @@ const toggleFavorito = async (noticia) => {
       border: 1px solid #334155;
       border-radius: 12px;
       padding: 20px;
-      box-sizing: border-box; /* Importante para a responsividade */
+      box-sizing: border-box; 
       display: flex;
       flex-direction: column;
-      justify-content: space-between; /* Empurra o botão de ler mais para o fim do card */
+      justify-content: space-between; 
+      transition: transform 0.3s, border-color 0.3s;
   }
 
   .news-card:hover {
@@ -242,34 +218,17 @@ const toggleFavorito = async (noticia) => {
       border-color: var(--primary);
   }
 
-  .card-actions {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 15px;
-  }
-
-  .read-more {
-      color: var(--primary);
-      text-decoration: none;
-      font-size: 0.9rem;
-      font-weight: 600;
-  }
-
-  .fav-btn {
-      background: none;
-      width: auto; 
-      padding: 5px;
-      margin: 0;
-      font-size: 1.2rem;
-  }
-
-  h1 {
+  h1.neon-text {
       font-size: 1.5rem;
       margin-bottom: 1.5rem;
       text-align: center;
       color: var(--primary);
       letter-spacing: 1px;
+  }
+
+  #form-title {
+      text-align: center;
+      margin-bottom: 20px;
   }
 
   input {
@@ -318,149 +277,25 @@ const toggleFavorito = async (noticia) => {
       color: var(--primary);
   }
 
-  .feed-header {
-    display: grid; 
-    grid-template-columns: 1fr auto 1fr; /* 3 colunas: as das pontas ocupam o mesmo espaço */
-    align-items: center;
-    width: 100%;
-    max-width: 1200px;
-    margin: 20px auto;
-    padding: 0 15px;
+  @media (min-width: 601px) and (max-width: 1024px) {
+    .feed-container {
+      grid-template-columns: repeat(2, 1fr); 
+    }
   }
 
-  /* O título agora fica na coluna do meio (centralizado) */
-  .feed-header h1 {
-    grid-column: 2; 
-    margin: 0; /* Remove margens que podem desalinhá-lo */
+  @media (min-width: 1025px) {
+    .news-card:has(.skeleton) {
+      min-height: 250px; 
+    }
+    
+    .feed-container {
+      grid-template-columns: repeat(3, 1fr) !important; 
+    }
+    
+    .news-card {
+      min-height: 280px;
+      display: flex;
+      flex-direction: column;
+    }
   }
-
-  /* O botão de sair fica na terceira coluna (alinhado à direita) */
-  .logout-btn {
-    grid-column: 3;
-    justify-self: end; /* Alinha o botão no fim da sua coluna (direita) */
-    width: auto;
-    background: #ff4d4d;
-    color: white;
-    border: 2px solid #ff4d4d;
-    padding: 10px 20px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-family: 'Orbitron', sans-serif;
-    font-weight: bold;
-    text-transform: uppercase;
-    transition: all 0.3s ease;
-    box-shadow: 0 0 10px rgba(255, 77, 77, 0.3);
-  }
-
-  .logout-btn:hover {
-    background: transparent;
-    color: #ff4d4d;
-    box-shadow: 0 0 20px rgba(255, 77, 77, 0.6);
-    transform: scale(1.05);
-  }
-
-  /* Quando a tela for até que 600px (celulares) */
-  @media (max-width: 870px) {
-  .feed-header {
-    display: flex;        /* Volta para flex em telas pequenas */
-    flex-direction: column; /* Coloca um em cima do outro */
-    gap: 15px;            /* Espaço entre o título e o botão */
-    padding: 10px;
-  }
-
-  .feed-header h1 {
-    font-size: 1.2rem;    
-    text-align: center;
-  }
-
-  .logout-btn {
-    width: auto;    
-    align-self: center; 
-    margin-top: 5px;
-  }
-}
-
-/* TABLETS (Telas entre 601px e 1024px) */
-/* TABLET (Telas de 601px até 1024px) */
-@media (min-width: 601px) and (max-width: 1024px) {
-  .feed-header {
-    display: flex;
-    justify-content: space-between; /* No tablet, o 'between' funciona melhor para evitar sobreposição */
-    align-items: center;
-    padding: 0 30px;
-    position: static; /* Remove o absolute do botão nesse tamanho */
-  }
-
-  .feed-header h1 {
-    flex: 1;
-    text-align: left; /* Alinha o texto à esquerda para dar espaço ao botão no canto */
-    font-size: 1.3rem;
-    margin-right: 20px; /* Margem de segurança para o botão */
-  }
-
-  .logout-btn {
-    position: static; /* O botão volta a ocupar o seu próprio espaço */
-    transform: none;
-    flex-shrink: 0;   /* Não deixa o botão encolher */
-    margin-right:20px
-  }
-  
-  .feed-container {
-    grid-template-columns: repeat(2, 1fr); /* 2 colunas de notícias no tablet */
-  }
-}
-
-@keyframes shimmer {
-  0% { background-position: -468px 0; }
-  100% { background-position: 468px 0; }
-}
-
-.skeleton {
-  background: #1e293b;
-  background-image: linear-gradient(
-    90deg,
-    #1e293b 0px,
-    #334155 40px,
-    #1e293b 80px
-  );
-  background-size: 800px 100%;
-  background-repeat: no-repeat;
-  display: inline-block;
-  line-height: 1;
-  widhth: 100%;
-  animation: shimmer 1.5s infinite linear;
-  border-radius: 4px;
-}
-
-/* Tamanhos dos esqueletos dentro do card */
-.skeleton-title {
-  height: 24px;
-  margin-bottom: 10px;
-  width: 80%; }
-.skeleton-text { 
-  height: 18px; /* Era 16px */
-  margin-bottom: 12px; 
-  width: 100%; 
-}
-.skeleton-btn { height: 30px; width: 100px; border-radius: 6px; }
-
-@media (min-width: 1025px) {
-  .news-card:has(.skeleton) {
-    min-height: 250px; /* Garante que o esqueleto não fique "magrinho" no PC */
-  }
-}
-
-@media (min-width: 1025px) {
-  .feed-container {
-    /* Aqui é onde a mágica da grade acontece no PC */
-    grid-template-columns: repeat(3, 1fr) !important; 
-  }
-  
-  /* Garante que o card do esqueleto tenha uma altura imponente no PC */
-  .news-card {
-    min-height: 280px;
-    display: flex;
-    flex-direction: column;
-  }
-}
 </style>
