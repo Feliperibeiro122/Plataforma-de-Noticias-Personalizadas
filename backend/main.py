@@ -102,7 +102,7 @@ def login(user_credentials: schemas.UserCreate, db: Session = Depends(get_db)):
     token = create_acess_token(data={"sub": str(user.id)})
 
     #5. Retorna o Token único
-    return {"acess_token":token, "token_type": "bearer"}
+    return {"access_token":token, "token_type": "bearer"}
 
 
 @app.put("/preferences/{user_id}")
