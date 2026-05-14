@@ -41,3 +41,15 @@ class History(HistoryBase):
 
     class Config:
         from_attributes = True
+
+class FavoriteCreate(BaseModel):
+    title: str
+    url: str
+    image_url: Optional[str] = None
+
+class FavoriteResponse(FavoriteCreate):
+    id: int
+    user_id: int
+
+    class Config:
+        from_attributes = True

@@ -164,6 +164,33 @@ def get_user_history(current_user: models.User = Depends(get_current_user), db: 
     #Retorna o hitórico do mais recente para o mais antigo
     return db.query(models.History).filter(models.History.user_id == current_user.id).order_by(models.History.timestamp.desc()).all()
 
+@app.post("/favorites", response_model=schemas.FavoriteResponse)
+def add_favorite(
+    favorite:schemas.FavoriteCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user) #Apenas para quem estiver logado
+):
+    #1. Cria o objeto do banco com o ID do usuário logado
+    db_favorite = models.Favorite(
+        **favorite.dict(),
+        user_id = current_user.id
+    )
+
+    #2. Salva no banco
+    db.add(db_favorite)
+    db.commit()
+    db.refresh(db_favorite)
+
+    return db_favorite
+
+#Rota para listar os favoritos do usuário logado
+@app.get("/favorites", response_model=list[schemas.FavoriteResponse])
+def get_favorites(
+    db: Session = Depends(get_db),
+    currente_user: models.User = Depends(get_current_user)
+):
+    return currente_user.favorites
+
 @app.get("/")
 def home():
     return{"status": "API Online", "message": "Bem-vindo à Plataforma de Notícias"}

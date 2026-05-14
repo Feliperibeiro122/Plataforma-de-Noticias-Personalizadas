@@ -12,17 +12,22 @@ class User(Base):
     preferences = Column(String, default="tecnologia")# Salvaremos as categorias separadas por vírgula
 
     history = relationship("History", back_populates="owner")
+    favorites = relationship("Favorite", back_populates="owner")
     # --- TABELAS DOS DIFERENCIAIS (OPCIONAIS DO EDITAL) ---
 
 class Favorite(Base):
     __tablename__ = "favorites"
 
     id = Column(Integer, primary_key=True,index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
+    
     tittle = Column(String)
     summary = Column(String)
     url = Column(String)
-    category = Column(String)
+    image_url = Column(String, nullable=True)
+    
+    user_id = Column(Integer, ForeignKey("users.id"))
+
+    owner = relationship("User", back_populates="favorites")
 
 class History(Base):
     __tablename__ = "history"
