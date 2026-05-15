@@ -6,13 +6,25 @@ import TheHeader from './components/TheHeader.vue'
 import SkeletonCard from './components/SkeletonCard.vue'
 import NewsCard from './components/NewsCard.vue'
 import FilterBar from './components/FilterBar.vue'
+import TheSidebar from './components/TheSidebar.vue'
 
 const verificandoAuth = ref(true); 
 
 onMounted(async () => {
+  window.onscroll = () => {
+    // Detecta se chegou no fim da página (com margem de 100px)
+    let bottomOfWindow = document.documentElement.scrollTop + window.innerHeight >= document.documentElement.offsetHeight - 100;
+
+    if (bottomOfWindow && !carregandoMais.value) {
+      // Ele continua carregando usando os filtros que já estão salvos
+      carregarFeed(filtrosAtuais.value, false); 
+    }
+  }
+
   const token = localStorage.getItem('token');
   if (token) {
-    await carregarFeed(); 
+    isLoggedIn.value = true; // Garante que o estado de login mude
+    await carregarFeed({}, true); 
   }
   verificandoAuth.value = false; 
 });
@@ -31,6 +43,26 @@ const API_URL = "http://127.0.0.1:8000"
 
 const isLoggedIn = ref(false)
 const noticias = ref([])
+const paginaAtual = ref(1)
+const carregandoMais = ref(false)
+const filtrosAtuais = ref({search: '', category: ''});
+
+const favoritosLista = ref([]);
+const historicoLista = ref([]);
+
+const sidebarAberta = ref(false);
+
+const toggleSidebar = () => {
+  sidebarAberta.value = !sidebarAberta.value
+}
+
+
+const handleFilterChange = async(novosFiltros) => {
+  filtrosAtuais.value = novosFiltros;
+
+  await carregarFeed(novosFiltros, true);
+}
+
 
 const toggleMode = () => {
   isLogin.value = !isLogin.value
@@ -57,12 +89,23 @@ const handleAuth = async () => {
   }
 }
 
-const carregarFeed = async (filtros = {}) => {
+const carregarFeed = async (filtros = {}, novaBusca = false) => {
+  // 1. Se já estiver carregando, evita chamadas duplicadas
+  if (carregandoMais.value) return;
+
   try {
+    carregandoMais.value = true;
     const token = localStorage.getItem('token');
-    if (!token) return;
+
+    //2. Se mudou filtro ou tag, página é resetado para a página 1 e esvazia a lista
+    if (novaBusca) {
+      paginaAtual.value = 1
+      noticias.value = [];
+    }
 
     const params = new URLSearchParams();
+    params.append('page', paginaAtual.value);
+    params.append('size',12)
     
     // Garantir que estamos pegando os nomes certos que o FilterBar envia
     if (filtros.search) params.append('search', filtros.search);
@@ -72,8 +115,6 @@ const carregarFeed = async (filtros = {}) => {
     // A interrogação DEVE estar ali se houver query string
     const urlFinal = queryString ? `${API_URL}/feed?${queryString}` : `${API_URL}/feed`;
     
-    console.log("Chamando:", urlFinal); // Verifique isso no F12!
-
     const resFeed = await axios.get(urlFinal, {
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -83,17 +124,23 @@ const carregarFeed = async (filtros = {}) => {
     });
 
     // Se o backend retornar um objeto com a chave "noticias", pegamos ela
-    const listaNoticias = resFeed.data.noticias || resFeed.data;
+    const novasNoticiasRaw = resFeed.data.noticias || resFeed.data;
     const meusFavoritos = resFavs.data || [];
 
-    noticias.value = listaNoticias.map(noticia => {
+    const novasNoticiasProcessadas = novasNoticiasRaw.map(noticia => {
       const jaFavoritado = meusFavoritos.some(fav => fav.url === noticia.url);
       return { ...noticia, favorito: jaFavoritado };
     });
 
+    noticias.value = [...noticias.value, ...novasNoticiasProcessadas];
+
+    paginaAtual.value++;
+
     isLoggedIn.value = true;
   } catch (error) {
     console.error("Erro ao carregar feed:", error);
+  } finally {
+    carregandoMais.value=false;
   }
 };
 
@@ -130,7 +177,7 @@ const toggleFavorito = async (noticia) => {
 <template>
   <div class="login-container">
     
-   <div v-if="!isLoggedIn && !verificandoAuth" id="auth-form">
+    <div v-if="!isLoggedIn && !verificandoAuth" id="auth-form">
       <h1 class="neon-text">PLATAFORMA DE NOTÍCIAS</h1>
       <h2 id="form-title">{{ isLogin ? 'Login' : 'Cadastro' }}</h2>
       
@@ -154,22 +201,35 @@ const toggleFavorito = async (noticia) => {
     </div>
 
     <div v-else-if="isLoggedIn || verificandoAuth" class="main-feed">
-      <TheHeader :verificandoAuth="verificandoAuth" @logout="logout" />
-      <FilterBar @filter-change="carregarFeed" />
+      <TheHeader :verificandoAuth="verificandoAuth" @logout="logout" @toggle-menu="toggleSidebar" />
 
-      <div class="feed-container">
-        <template v-if="verificandoAuth">
-          <SkeletonCard v-for="n in 6" :key="n" />
-        </template>
+      <div class="content-layout" :class="{'sidebar-open':sidebarAberta}">
+        
+        <TheSidebar 
+          :favoritos="favoritosLista" :historico="historicoLista"
+          :isOpen="sidebarAberta"
+          @toggle="toggleSidebar" 
+        />
 
-        <template v-else>
-          <NewsCard 
-            v-for="item in noticias" 
-            :key="item.url" 
-            :item="item"
-            @toggle-fav="toggleFavorito"
-          />
-        </template>
+        <main class="main-content">
+          
+          <FilterBar @filter-change="handleFilterChange" />
+
+          <div class="feed-container">
+            <template v-if="verificandoAuth">
+              <SkeletonCard v-for="n in 6" :key="n" />
+            </template>
+
+            <template v-else>
+              <NewsCard 
+                v-for="item in noticias" 
+                :key="item.url" 
+                :item="item"
+                @toggle-fav="toggleFavorito"
+              />
+            </template>
+          </div>
+        </main>
       </div>
     </div>
 
@@ -318,4 +378,31 @@ const toggleFavorito = async (noticia) => {
       flex-direction: column;
     }
   }
+
+  .content-layout {
+  display: flex; /* Coloca sidebar e conteúdo lado a lado */
+  gap: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.main-content {
+  flex: 1; /* Faz o feed ocupar todo o espaço restante */
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.content-layout {
+  display: flex;
+  transition: padding-left 0.3s ease; /* Transição suave do empurrão */
+}
+
+/* Se a sidebar estiver aberta, empurramos o conteúdo em telas grandes */
+@media (min-width: 1024px) {
+  .content-layout.sidebar-open {
+    padding-left: 280px; 
+  }
+}
 </style>
