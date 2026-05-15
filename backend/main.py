@@ -193,9 +193,9 @@ def add_favorite(
 @app.get("/favorites", response_model=list[schemas.FavoriteResponse])
 def get_favorites(
     db: Session = Depends(get_db),
-    currente_user: models.User = Depends(get_current_user)
+    current_user: models.User = Depends(get_current_user)
 ):
-    return currente_user.favorites
+    return current_user.favorites
 
 @app.get("/")
 def home():

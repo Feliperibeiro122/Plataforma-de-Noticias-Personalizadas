@@ -5,6 +5,7 @@ import axios from 'axios'
 import TheHeader from './components/TheHeader.vue'
 import SkeletonCard from './components/SkeletonCard.vue'
 import NewsCard from './components/NewsCard.vue'
+import FilterBar from './components/FilterBar.vue'
 
 const verificandoAuth = ref(true); 
 
@@ -56,32 +57,45 @@ const handleAuth = async () => {
   }
 }
 
-const carregarFeed = async () => {
+const carregarFeed = async (filtros = {}) => {
   try {
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const params = new URLSearchParams();
     
-    // 1. Busca as noticias
-    const resFeed = await axios.get(`${API_URL}/feed`, {
-      headers: {Authorization: `Bearer ${token}`}
+    // Garantir que estamos pegando os nomes certos que o FilterBar envia
+    if (filtros.search) params.append('search', filtros.search);
+    if (filtros.category) params.append('category', filtros.category);
+
+    const queryString = params.toString();
+    // A interrogação DEVE estar ali se houver query string
+    const urlFinal = queryString ? `${API_URL}/feed?${queryString}` : `${API_URL}/feed`;
+    
+    console.log("Chamando:", urlFinal); // Verifique isso no F12!
+
+    const resFeed = await axios.get(urlFinal, {
+      headers: { Authorization: `Bearer ${token}` }
     });
 
-    // 2. Busca os seus favoritos salvos no banco
     const resFavs = await axios.get(`${API_URL}/favorites`, {
-      headers: {Authorization: `Bearer ${token}`}
+      headers: { Authorization: `Bearer ${token}` }
     });
 
+    // Se o backend retornar um objeto com a chave "noticias", pegamos ela
     const listaNoticias = resFeed.data.noticias || resFeed.data;
-    const meusFavoritos = resFavs.data;
+    const meusFavoritos = resFavs.data || [];
 
     noticias.value = listaNoticias.map(noticia => {
       const jaFavoritado = meusFavoritos.some(fav => fav.url === noticia.url);
-      return { ...noticia, favorito: jaFavoritado};
+      return { ...noticia, favorito: jaFavoritado };
     });
-    isLoggedIn.value = true
-  } catch(error) {
-    console.error("Erro ao carregar feed e favoritos:",error)
+
+    isLoggedIn.value = true;
+  } catch (error) {
+    console.error("Erro ao carregar feed:", error);
   }
-}
+};
 
 const toggleFavorito = async (noticia) => {
   try {
@@ -136,6 +150,7 @@ const toggleFavorito = async (noticia) => {
 
     <div v-else-if="isLoggedIn || verificandoAuth" class="main-feed">
       <TheHeader :verificandoAuth="verificandoAuth" @logout="logout" />
+      <FilterBar @filter-change="carregarFeed" />
 
       <div class="feed-container">
         <template v-if="verificandoAuth">
