@@ -126,6 +126,8 @@ def update_preferences(user_id: int, pref: schemas.UserPreferences, db: Session 
 
 @app.get("/feed")
 def get_user_feed(
+    page: int = 1,
+    size: int = 12,
     category: Optional[str] = None,
     search: Optional[str] = None,
     current_user: models.User = Depends(get_current_user)
@@ -135,12 +137,13 @@ def get_user_feed(
     termo_de_busca = search or category or current_user.preferences
 
     # 2. Chama o serviço de notícias criado
-    noticias = services.fetch_news_by_preferences(termo_de_busca)
+    noticias = services.fetch_news_by_preferences(termo=termo_de_busca, page=page, size=size)
 
     return {
         "usuario": current_user.email,
         "filtro_aplicado": termo_de_busca,
-        "noticias": noticias
+        "noticias": noticias,
+        "page": page
     }
 
 @app.post("/history", response_model=schemas.History)
