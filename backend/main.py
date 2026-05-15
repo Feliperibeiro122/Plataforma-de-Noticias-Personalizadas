@@ -2,6 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException
 from fastapi import security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
+from typing import Optional
 
 
 from sqlalchemy.orm import Session
@@ -124,17 +125,22 @@ def update_preferences(user_id: int, pref: schemas.UserPreferences, db: Session 
     return{"message": "Preferências atualizadas!", "preferences": db_user.preferences}
 
 @app.get("/feed")
-def get_user_feed(current_user: models.User = Depends(get_current_user)):
-    #1. Pega as preferências do usuário logado
-    user_prefs = current_user.preferences
+def get_user_feed(
+    category: Optional[str] = None,
+    search: Optional[str] = None,
+    current_user: models.User = Depends(get_current_user)
+):
+    # 1. Define a lógica de busca direto no termo
+    # Prioridade: 1º Busca manual, 2º Categoria/Tag, 3º Preferências vindas do banco
+    termo_de_busca = search or category or current_user.preferences
 
-    #2. Chama o serviço de notícias criado
-    noticias = services.fetch_news_by_preferences(user_prefs)
+    # 2. Chama o serviço de notícias criado
+    noticias = services.fetch_news_by_preferences(termo_de_busca)
 
     return {
         "usuario": current_user.email,
-        "preferencias_usadas": user_prefs,
-        "noticias":noticias
+        "filtro_aplicado": termo_de_busca,
+        "noticias": noticias
     }
 
 @app.post("/history", response_model=schemas.History)
