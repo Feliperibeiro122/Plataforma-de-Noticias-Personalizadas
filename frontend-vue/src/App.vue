@@ -98,10 +98,10 @@ const carregarFeed = async (filtros = {}) => {
 };
 
 const toggleFavorito = async (noticia) => {
-  try {
-    const token = localStorage.getItem('token');
-    noticia.favorito = !noticia.favorito;
+  const token = localStorage.getItem('token');
+  noticia.favorito = !noticia.favorito;
 
+  try {
     if (noticia.favorito) {
       await axios.post(`${API_URL}/favorites`, {
         title: noticia.title,
@@ -112,12 +112,17 @@ const toggleFavorito = async (noticia) => {
       });
       console.log("Favorito salvo no banco");
     } else {
-      console.log("Removido (lógica de delete ainda não integrada)");
+      //Lógica de delete
+      await axios.delete(`${API_URL}/favorites`, {
+        headers: { Authorization: `Bearer ${token}` },
+        data: { url: noticia.url, title: noticia.title }
+      })
+      console.log("Favorito removido do banco");
     }
   } catch (error) {
-    console.error("Erro ao salvar favorito:", error);
+    console.error("Erro ao atualizar favorito:", error);
     noticia.favorito = !noticia.favorito;
-    alert("Não foi possível salvar o favorito");
+    alert("Não foi possível atualizar o favorito");
   }
 }
 </script>

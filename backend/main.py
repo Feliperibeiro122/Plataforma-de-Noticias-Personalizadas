@@ -197,6 +197,23 @@ def get_favorites(
 ):
     return current_user.favorites
 
+@app.delete("/favorites")
+def remove_favorite(
+    favorite:schemas.FavoriteCreate,
+    db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+
+    db_favorite = db.query(models.Favorite).filter(
+        models.Favorite.user_id == current_user.id,
+        models.Favorite.url == favorite.url
+    ).first()
+
+    if not db_favorite:
+        raise HTTPException(status_code=404, detail="Favorito não encontrado")
+    
+    db.delete(db_favorite)
+    db.commit()
+    return {"message": "Removido dos favoritos"}
+
 @app.get("/")
 def home():
     return{"status": "API Online", "message": "Bem-vindo à Plataforma de Notícias"}
