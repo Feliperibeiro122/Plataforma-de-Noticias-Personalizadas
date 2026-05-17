@@ -12,16 +12,18 @@ const verificandoAuth = ref(true);
 
 onMounted(async () => {
   window.onscroll = () => {
-
     if (modoAtual.value !== 'geral') return; 
 
-    if (noticia.value.length === 0)
-    return;
+    if (noticias.value.length === 0) return;
+    
     // Detecta se chegou no fim da página (com margem de 100px)
     let bottomOfWindow = document.documentElement.scrollTop + window.innerHeight >= document.documentElement.offsetHeight - 100;
 
     if (bottomOfWindow && !carregandoMais.value) {
-      // Ele continua carregando usando os filtros que já estão salvos
+      // INCREMENTO: Avisa que queremos a PRÓXIMA página antes de chamar a API
+      paginaAtual.value++; 
+      
+      // Passa false para NÃO resetar o feed existente
       carregarFeed(filtrosAtuais.value, false); 
     }
   }
@@ -75,28 +77,93 @@ const toggleMode = () => {
 }
 
 const handleAuth = async () => {
+  // VERIFICAÇÃO CRÍTICA: Impede campos vazios ou cheios de espaços
+  if (!email.value || !email.value.trim()) {
+    alert("Por favor, digite o seu e-mail! ");
+    return;
+  }
+
+  if (!password.value || !password.value.trim()) {
+    alert("Por favor, digite a sua senha! ");
+    return;
+  }
+
+  if (!isLogin.value && password.value.trim().length < 6) {
+    alert("A senha precisa ter pelo menos 6 caracteres! ");
+    return;
+  }
+
   try {
-    const endpoint = isLogin.value ? '/login' : '/register'
-    const payload = {email: email.value, password: password.value, preferences: preferences.value}
+    const endpoint = isLogin.value ? "/login" : "/register"
+    let payload;
 
-    const {data} = await axios.post(`${API_URL}${endpoint}`, payload)
+    if (isLogin.value) {
+      // Enviamos um JSON contendo tanto 'username' quanto 'email' 
+      // para cobrir qualquer padrão que seu schemas.py exija
+      payload = {
+        username: email.value,
+        email: email.value,
+        password: password.value
+      };
+    } else {
+      payload = { 
+        email: email.value, 
+        password: password.value, 
+        preferences: preferences.value 
+      };
+    }
 
-    //lógica de login
+    // Enviando como JSON normal (sem headers complexos por enquanto)
+    const { data } = await axios.post(`${API_URL}${endpoint}`, payload)
+
     if (isLogin.value) {
       localStorage.setItem('token', data.access_token)
+      
       const idParaSalvar = data.user_id || data.id || data.user?.id
       if (idParaSalvar) {
         localStorage.setItem('userId', idParaSalvar)
       }
-      alert("Login realizado com sucesso!")
-      await carregarFeed() 
+
+      alert("Login realizado com sucesso! 🎉");
+      await carregarFeed({}, true) 
       isLoggedIn.value = true 
     } else {
-      alert("Cadastro ok! Faça Login.")
-      isLogin.value = true
+      alert("Cadastro realizado com sucesso! Faça o login. 😉");
+      isLogin.value = true 
     }
+
   } catch (err) {
-    alert(err.response?.data?.detail || "Erro na conexão")
+    console.error("Erro completo da autenticação:", err)
+
+    // Se o backend rejeitou o formato (Falta de @, campos vazios que passaram, etc)
+    if (err.response?.status === 422) {
+      const erroTexto = JSON.stringify(err.response.data)
+      
+      if (erroTexto.includes("email") || erroTexto.includes("valid email")) {
+        alert("Por favor, insira um e-mail válido (exemplo@email.com). ")
+      } else {
+        alert("Erro de validação: Verifique se os campos foram preenchidos corretamente.")
+      }
+      return;
+    }
+
+    // Se o erro vier direto no 'detail' (Erros 400 ou 401 do FastAPI para dados incorretos)
+    const detalheErro = err.response?.data?.detail;
+
+    if (detalheErro) {
+      if (typeof detalheErro === 'object') {
+        const detalheTexto = JSON.stringify(detalheErro).toLowerCase();
+        if (detalheTexto.includes("password") || detalheTexto.includes("credentials") || detalheTexto.includes("incorreto")) {
+          alert("E-mail ou senha incorretos! ");
+        } else {
+          alert("Erro no processo: Verifique suas credenciais.");
+        }
+      } else {
+        alert(`${detalheErro} `);
+      }
+    } else {
+      alert("Erro na conexão com o servidor. Verifique se o backend está rodando! ");
+    }
   }
 }
 
@@ -108,20 +175,18 @@ const carregarFeed = async (filtros = {}, novaBusca = false) => {
     carregandoMais.value = true;
     const token = localStorage.getItem('token');
 
-    //2. Se mudou filtro ou tag, página é resetado para a página 1 e esvazia a lista
+    // 1. Se mudou filtro ou tag, a página é resetada para 1
     if (novaBusca) {
-      paginaAtual.value = 1
-      noticias.value = [];
+      paginaAtual.value = 1;
     }
 
     const params = new URLSearchParams();
     params.append('page', paginaAtual.value);
-    params.append('size',12)
+    params.append('size', 12);
     
-    // Garantir que está sendo pego os nomes da maneira certa que o FilterBar envia
+    // Garantir que os filtros sejam passados corretamente
     if (filtros.search) params.append('search', filtros.search);
     if (filtros.category) params.append('category', filtros.category);
-
     if (filtros.dateFrom) params.append('from', filtros.dateFrom);
     if (filtros.dateTo) params.append('to', filtros.dateTo);
     if (filtros.source) params.append('source', filtros.source);
@@ -129,13 +194,14 @@ const carregarFeed = async (filtros = {}, novaBusca = false) => {
     const queryString = params.toString();
     const urlFinal = queryString ? `${API_URL}/feed?${queryString}` : `${API_URL}/feed`;
     
+    // Busca os dados em paralelo para melhor performance
     const [resFeed, resFavs, resHist] = await Promise.all([
       axios.get(urlFinal, { headers: { Authorization: `Bearer ${token}` } }),
       axios.get(`${API_URL}/favorites`, { headers: { Authorization: `Bearer ${token}` } }),
       axios.get(`${API_URL}/history`, { headers: { Authorization: `Bearer ${token}` } })
     ]);
 
-    // Se o backend retornar um objeto com a chave "noticias", pegamos ela
+    // Trata o retorno da API de notícias
     const novasNoticiasRaw = resFeed.data.noticias || resFeed.data;
     const meusFavoritos = resFavs.data || [];
     const meuHistorico = resHist.data || [];
@@ -143,31 +209,37 @@ const carregarFeed = async (filtros = {}, novaBusca = false) => {
     favoritosLista.value = meusFavoritos;
     historicoLista.value = meuHistorico;
 
-    noticias.value = Array.isArray(novasNoticiasRaw) 
+    // Processa as novas notícias mapeando favoritos, fontes e datas
+    const novasNoticiasProcessadas = Array.isArray(novasNoticiasRaw)
       ? novasNoticiasRaw.map(noticia => {
           const jaFavoritado = meusFavoritos.some(fav => fav.url === noticia.url);
           return { 
             ...noticia,
             fonte: noticia.source?.name || 'Fonte desconhecida',
             dataPublicacao: noticia.publishedAt, 
-            favorito: jaFavoritado };
+            favorito: jaFavoritado 
+          };
         })
       : [];
 
-    const novasNoticiasProcessadas = novasNoticiasRaw.map(noticia => {
-      const jaFavoritado = meusFavoritos.some(fav => fav.url === noticia.url);
-      return { ...noticia, favorito: jaFavoritado };
-    });
-
-    noticias.value = [...noticias.value, ...novasNoticiasProcessadas];
-
-    paginaAtual.value++;
+    // 2. AQUI ESTÁ A CORREÇÃO CRÍTICA DO ACÚMULO
+    if (novaBusca) {
+      // Se for uma nova pesquisa ou troca de categoria, substitui o feed antigo pelas novas
+      noticias.value = novasNoticiasProcessadas;
+    } else {
+      // Se for rolagem de página (scroll), mantém as antigas e adiciona as novas no fim da lista
+      noticias.value = [...noticias.value, ...novasNoticiasProcessadas];
+    }
 
     isLoggedIn.value = true;
   } catch (error) {
     console.error("Erro ao carregar feed:", error);
+    // Se deu erro ao carregar o scroll, reduz a página para não pular dados na próxima tentativa
+    if (!novaBusca && paginaAtual.value > 1) {
+      paginaAtual.value--;
+    }
   } finally {
-    carregandoMais.value=false;
+    carregandoMais.value = false;
   }
 };
 
@@ -277,7 +349,7 @@ const alterarModoFeed = async (modo) => {
             {{ modoAtual === 'geral' ? 'Feed Principal' : `Feed de ${modoAtual}`}}
           </h2>
           
-          <FilterBar @filter-change="carregarFeed" />
+          <FilterBar @filter-change="handleFilterChange" />
 
           <div class="feed-container">
             <template v-if="verificandoAuth">
