@@ -117,15 +117,19 @@ const carregarFeed = async (filtros = {}, novaBusca = false) => {
     // A interrogação DEVE estar ali se houver query string
     const urlFinal = queryString ? `${API_URL}/feed?${queryString}` : `${API_URL}/feed`;
     
-    const [resFeed, resFavs] = await Promise.all([
+    const [resFeed, resFavs, resHist] = await Promise.all([
       axios.get(urlFinal, { headers: { Authorization: `Bearer ${token}` } }),
-      axios.get(`${API_URL}/favorites`, { headers: { Authorization: `Bearer ${token}` } })
+      axios.get(`${API_URL}/favorites`, { headers: { Authorization: `Bearer ${token}` } }),
+      axios.get(`${API_URL}/history`, { headers: { Authorization: `Bearer ${token}` } })
     ]);
 
     // Se o backend retornar um objeto com a chave "noticias", pegamos ela
     const novasNoticiasRaw = resFeed.data.noticias || resFeed.data;
     const meusFavoritos = resFavs.data || [];
+    const meuHistorico = resHist.data || [];
+
     favoritosLista.value = meusFavoritos;
+    historicoLista.value = meuHistorico;
 
     noticias.value = Array.isArray(novasNoticiasRaw) 
       ? novasNoticiasRaw.map(noticia => {
@@ -195,7 +199,18 @@ const alterarModoFeed = async (modo) => {
       favorito: true 
     }))
   } else if (modo === 'historico') {
-    noticias.value = historicoLista.value
+    noticias.value = historicoLista.value.map(hist => {
+      const jaFavoritado = favoritosLista.value.some(fav => fav.url === hist.url);
+
+      return {
+        id: hist.id,
+        title: hist.title,
+        url: hist.url,
+        description: hist.description || 'Notícia acessada anteriormente.',
+        urlToImage: hist.image_url || '',
+        favorito: jaFavoritado
+      }
+    })
   } else {
     await carregarFeed({}, true)
   }
@@ -254,9 +269,9 @@ const alterarModoFeed = async (modo) => {
 
             <template v-else>
               <NewsCard 
-                v-for="item in noticias" 
-                :key="item.url" 
-                :item="item"
+                v-for="(noticia, index) in noticias" 
+                :key="noticia.id || (noticia.url + '-' + index)" 
+                :item="noticia"
                 @toggle-fav="toggleFavorito"
               />
             </template>

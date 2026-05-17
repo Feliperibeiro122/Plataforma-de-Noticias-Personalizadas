@@ -12,15 +12,15 @@
         
         <ul class="sidebar-menu">
           <li class="menu-item" @click="navegar('geral')">
-            <span class="menu-icon">🏠</span> Home
+            <span class="menu-icon">🏠︎</span> Home
           </li>
 
           <li class="menu-item" @click="navegar('favoritos')">
-            <span class="menu-icon">⭐</span> Meus Favoritos
+            <span class="menu-icon">☆</span> Meus Favoritos
           </li>
 
           <li class="menu-item" @click="navegar('historico')">
-            <span class="menu-icon">🕒</span> Histórico de Leitura
+            <span class="menu-icon">↺</span> Histórico de Leitura
           </li>
         </ul>
       </div>

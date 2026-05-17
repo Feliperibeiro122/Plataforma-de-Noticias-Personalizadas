@@ -4,7 +4,7 @@
     <p>{{ item.description }}</p>
 
     <div class="card-actions">
-      <a :href="item.url" target="_blank" class="read-more">Ler notícia</a>
+      <a :href="item.url" target="_blank" class="read-more" @click="registrarNoHistorico">Ler notícia</a>
       <button @click="$emit('toggle-fav', item)" class="fav-btn">
         {{ item.favorito ? '⭐' : '☆' }}
       </button>
@@ -13,10 +13,31 @@
 </template>
 
 <script setup>
-defineProps({
+import axios from 'axios';
+
+const props = defineProps({
   item: Object
 });
 defineEmits(['toggle-fav']);
+
+const API_URL = 'http://localhost:8000';
+
+const registrarNoHistorico = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    await axios.post(`${API_URL}/history`, {
+      title: props.item.title,
+      url: props.item.url
+    }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    console.log("Notícia registrada no histórico com sucesso!");
+  } catch(error) {
+    console.error("Erro ao registrar no histórico:", error);
+  }
+}
 </script>
 
 <style scoped>
