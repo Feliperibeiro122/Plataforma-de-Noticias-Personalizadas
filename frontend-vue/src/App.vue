@@ -12,6 +12,8 @@ const verificandoAuth = ref(true);
 
 onMounted(async () => {
   window.onscroll = () => {
+
+    if (modoAtual.value !== 'geral') return; 
     // Detecta se chegou no fim da página (com margem de 100px)
     let bottomOfWindow = document.documentElement.scrollTop + window.innerHeight >= document.documentElement.offsetHeight - 100;
 
@@ -115,17 +117,22 @@ const carregarFeed = async (filtros = {}, novaBusca = false) => {
     // A interrogação DEVE estar ali se houver query string
     const urlFinal = queryString ? `${API_URL}/feed?${queryString}` : `${API_URL}/feed`;
     
-    const resFeed = await axios.get(urlFinal, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-
-    const resFavs = await axios.get(`${API_URL}/favorites`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const [resFeed, resFavs] = await Promise.all([
+      axios.get(urlFinal, { headers: { Authorization: `Bearer ${token}` } }),
+      axios.get(`${API_URL}/favorites`, { headers: { Authorization: `Bearer ${token}` } })
+    ]);
 
     // Se o backend retornar um objeto com a chave "noticias", pegamos ela
     const novasNoticiasRaw = resFeed.data.noticias || resFeed.data;
     const meusFavoritos = resFavs.data || [];
+    favoritosLista.value = meusFavoritos;
+
+    noticias.value = Array.isArray(novasNoticiasRaw) 
+      ? novasNoticiasRaw.map(noticia => {
+          const jaFavoritado = meusFavoritos.some(fav => fav.url === noticia.url);
+          return { ...noticia, favorito: jaFavoritado };
+        })
+      : [];
 
     const novasNoticiasProcessadas = novasNoticiasRaw.map(noticia => {
       const jaFavoritado = meusFavoritos.some(fav => fav.url === noticia.url);
@@ -172,6 +179,27 @@ const toggleFavorito = async (noticia) => {
     alert("Não foi possível atualizar o favorito");
   }
 }
+
+const modoAtual = ref('geral')
+
+const alterarModoFeed = async (modo) => {
+  modoAtual.value = modo
+
+  noticias.value = []
+
+  if (modo === 'favoritos') {
+    noticias.value = favoritosLista.value.map(fav => ({
+      title:fav.title,
+      url: fav.url,
+      urlToImage: fav.image_url || fav.urlToImage,
+      favorito: true 
+    }))
+  } else if (modo === 'historico') {
+    noticias.value = historicoLista.value
+  } else {
+    await carregarFeed({}, true)
+  }
+}
 </script>
 
 <template>
@@ -206,14 +234,18 @@ const toggleFavorito = async (noticia) => {
       <div class="content-layout" :class="{'sidebar-open':sidebarAberta}">
         
         <TheSidebar 
-          :favoritos="favoritosLista" :historico="historicoLista"
           :isOpen="sidebarAberta"
-          @toggle="toggleSidebar" 
+          @toggle="toggleSidebar"
+          @mudar-feed="alterarModoFeed" 
         />
 
-        <main class="main-content">
+        <main class="main-content" style="width: 100%;">
+
+          <h2 class="neon-text" style="text-transform: uppercase; margin: 20px 0; text-align: left;">
+            {{ modoAtual === 'geral' ? 'Feed Principal' : `Feed de ${modoAtual}`}}
+          </h2>
           
-          <FilterBar @filter-change="handleFilterChange" />
+          <FilterBar @filter-change="carregarFeed" />
 
           <div class="feed-container">
             <template v-if="verificandoAuth">

@@ -8,19 +8,19 @@
       </button>
       
       <div class="sidebar-content" v-show="isOpen">
-        <h3 class="section-title">⭐ Favoritos</h3>
-        <ul class="sidebar-list">
-          <li v-for="fav in favoritos" :key="fav.url" class="sidebar-item">
-            <a :href="fav.url" target="_blank" class="sidebar-link">{{ fav.title }}</a>
+        <h2 class="sidebar-brand">Navegação</h2>
+        
+        <ul class="sidebar-menu">
+          <li class="menu-item" @click="navegar('geral')">
+            <span class="menu-icon">🏠</span> Home
           </li>
-        </ul>
 
-        <hr class="divider" />
+          <li class="menu-item" @click="navegar('favoritos')">
+            <span class="menu-icon">⭐</span> Meus Favoritos
+          </li>
 
-        <h3 class="section-title">🕒 Histórico</h3>
-        <ul class="sidebar-list">
-          <li v-for="item in historico" :key="item.url" class="sidebar-item">
-            <a :href="item.url" target="_blank" class="sidebar-link history-link">{{ item.title }}</a>
+          <li class="menu-item" @click="navegar('historico')">
+            <span class="menu-icon">🕒</span> Histórico de Leitura
           </li>
         </ul>
       </div>
@@ -29,70 +29,61 @@
 </template>
 
 <script setup>
-defineProps(['favoritos', 'historico', 'isOpen']);
-defineEmits(['toggle']);
+defineProps(['isOpen']); // Não precisamos mais passar as listas de dados para cá
+const emit = defineEmits(['toggle', 'mudar-feed']);
+
+const navegar = (destino) => {
+  emit('mudar-feed', destino); // Avisa o App.vue qual página carregar
+  emit('toggle');              // Fecha a sidebar após o clique
+}
 </script>
 
 <style scoped>
+/* Mantém seus estilos anteriores (.sidebar-drawer, .toggle-btn, etc) */
 .sidebar-drawer {
   position: fixed;
   top: 0;
   left: 0;
   height: 100vh;
-  width: 0; /* Largura zero quando fechada */
+  width: 0;
   background: #1e293b;
   z-index: 1000;
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border-right: none;
-  overflow: visible; /* Permite que o botão saia para fora */
+  overflow: visible;
 }
-
 .sidebar-drawer.is-open {
-  width: 280px; /* Largura total quando aberta */
+  width: 280px;
   border-right: 2px solid var(--primary);
   padding: 20px;
 }
-
-/* BOTÃO FLUTUANTE DISCRETO */
 .toggle-btn {
   position: absolute;
   top: 15px;
-  right: -50px; /* Sempre fica à direita da borda da barra */
+  right: -50px;
   width: 40px;
   height: 40px;
   background: var(--card);
   border: 1px solid #334155;
-  border-radius: 50%; /* Redondo para não parecer um "caroço" */
+  border-radius: 50%;
   color: var(--primary);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-  transition: all 0.3s ease;
 }
-
 .sidebar-drawer.is-open .toggle-btn {
-  right: 15px; /* Pula para dentro da barra quando aberta */
+  right: 15px;
   background: transparent;
   border-color: transparent;
 }
-
-.toggle-btn:hover {
-  transform: scale(1.1);
-  border-color: var(--primary);
-}
-
 .sidebar-content {
   opacity: 0;
   transition: opacity 0.2s ease;
-  white-space: nowrap; /* Evita que o texto quebre enquanto a barra abre */
 }
-
 .sidebar-drawer.is-open .sidebar-content {
   opacity: 1;
 }
-
 .sidebar-overlay {
   position: fixed;
   top: 0;
@@ -104,9 +95,36 @@ defineEmits(['toggle']);
   z-index: 999;
 }
 
-@media (max-width: 768px) {
-  .sidebar-drawer.is-open {
-    width: 50vw; /* Ocupa quase tudo no mobile */
-  }
+/* ESTILOS NOVOS PARA O MENU ESTILO YOUTUBE */
+.sidebar-brand {
+  font-size: 1.2rem;
+  color: var(--primary);
+  margin-bottom: 25px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.sidebar-menu {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  padding: 14px 12px;
+  color: #f8fafc;
+  font-size: 1rem;
+  cursor: pointer;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  transition: background 0.2s, color 0.2s;
+}
+.menu-item:hover {
+  background: #334155;
+  color: var(--primary);
+}
+.menu-icon {
+  margin-right: 15px;
+  font-size: 1.2rem;
 }
 </style>
