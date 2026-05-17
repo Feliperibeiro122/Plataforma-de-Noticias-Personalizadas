@@ -8,7 +8,7 @@ class UserCreate(BaseModel):
     password: str
     preferences: str = "tecnologia"
 
-# O que a API devolve (não devolvemos a senha!)
+# O que a API devolve (Não devolve a senha)
 class UserResponse(BaseModel):
     id: int
     email: EmailStr

@@ -61,16 +61,12 @@ const salvarPreferencias = async () => {
     return
   }
 
-  // ESTRATÉGIA NOVA: Decodificar o ID do usuário direto do Token JWT
   let userId = null
   try {
-    // O JWT é dividido por pontos: header.payload.signature
-    // Pegamos a segunda parte (o payload) e decodificamos da base64
     const base64Url = token.split('.')[1]
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
     const payloadJson = JSON.parse(window.atob(base64))
     
-    // Geralmente o ID vem na chave 'sub' ou 'user_id' dentro do JWT do FastAPI
     userId = payloadJson.sub || payloadJson.user_id
   } catch (e) {
     console.error("Erro ao decodificar o token:", e)
@@ -83,7 +79,7 @@ const salvarPreferencias = async () => {
 
   // Se ainda for nulo, avisa o usuário
   if (!userId) {
-    alert("Não foi possível identificar o ID do usuário pelo token.")
+    alert("Não foi possível identificar usuário.")
     return
   }
 
@@ -113,7 +109,7 @@ const salvarPreferencias = async () => {
   }
 }
 
-defineProps(['isOpen']); // Não precisamos mais passar as listas de dados para cá
+defineProps(['isOpen']);
 const emit = defineEmits(['toggle', 'mudar-feed']);
 
 const navegar = (destino) => {
@@ -123,7 +119,6 @@ const navegar = (destino) => {
 </script>
 
 <style scoped>
-/* Mantém seus estilos anteriores (.sidebar-drawer, .toggle-btn, etc) */
 .sidebar-drawer {
   position: fixed;
   top: 0;
@@ -179,7 +174,6 @@ const navegar = (destino) => {
   z-index: 999;
 }
 
-/* ESTILOS NOVOS PARA O MENU ESTILO YOUTUBE */
 .sidebar-brand {
   font-size: 1.2rem;
   color: var(--primary);

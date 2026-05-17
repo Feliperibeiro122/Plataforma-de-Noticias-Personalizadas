@@ -9,11 +9,10 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
-    preferences = Column(String, default="tecnologia")# Salvaremos as categorias separadas por vírgula
+    preferences = Column(String, default="tecnologia") #salva as categorias separadas por vírgula
 
     history = relationship("History", back_populates="owner")
     favorites = relationship("Favorite", back_populates="owner")
-    # --- TABELAS DOS DIFERENCIAIS (OPCIONAIS DO EDITAL) ---
 
 class Favorite(Base):
     __tablename__ = "favorites"
@@ -26,6 +25,7 @@ class Favorite(Base):
     
     user_id = Column(Integer, ForeignKey("users.id"))
 
+    #Relacionamento: O favorito pertence a um usuário
     owner = relationship("User", back_populates="favorites")
 
 class History(Base):

@@ -66,7 +66,7 @@ const selecionarTag = (tag) => {
 }
 
 .search-box input{
-    margin: 0; /* Remove a marge do estilo global*/
+    margin: 0;
     flex: 1;
 }
 

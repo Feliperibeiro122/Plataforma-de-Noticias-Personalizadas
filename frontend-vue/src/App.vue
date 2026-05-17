@@ -81,7 +81,7 @@ const handleAuth = async () => {
 
     const {data} = await axios.post(`${API_URL}${endpoint}`, payload)
 
-
+    //lógica de login
     if (isLogin.value) {
       localStorage.setItem('token', data.access_token)
       const idParaSalvar = data.user_id || data.id || data.user?.id
@@ -101,7 +101,7 @@ const handleAuth = async () => {
 }
 
 const carregarFeed = async (filtros = {}, novaBusca = false) => {
-  // 1. Se já estiver carregando, evita chamadas duplicadas
+  // Se já estiver carregando, evita chamadas duplicadas
   if (carregandoMais.value) return;
 
   try {
@@ -118,7 +118,7 @@ const carregarFeed = async (filtros = {}, novaBusca = false) => {
     params.append('page', paginaAtual.value);
     params.append('size',12)
     
-    // Garantir que estamos pegando os nomes certos que o FilterBar envia
+    // Garantir que está sendo pego os nomes da maneira certa que o FilterBar envia
     if (filtros.search) params.append('search', filtros.search);
     if (filtros.category) params.append('category', filtros.category);
 
@@ -127,7 +127,6 @@ const carregarFeed = async (filtros = {}, novaBusca = false) => {
     if (filtros.source) params.append('source', filtros.source);
 
     const queryString = params.toString();
-    // A interrogação DEVE estar ali se houver query string
     const urlFinal = queryString ? `${API_URL}/feed?${queryString}` : `${API_URL}/feed`;
     
     const [resFeed, resFavs, resHist] = await Promise.all([
@@ -187,7 +186,7 @@ const toggleFavorito = async (noticia) => {
       });
       console.log("Favorito salvo no banco");
     } else {
-      //Lógica de delete
+      //Lógica de delete do favorito
       await axios.delete(`${API_URL}/favorites`, {
         headers: { Authorization: `Bearer ${token}` },
         data: { url: noticia.url, title: noticia.title }
@@ -203,6 +202,7 @@ const toggleFavorito = async (noticia) => {
 
 const modoAtual = ref('geral')
 
+//lógica do feed de favoritos
 const alterarModoFeed = async (modo) => {
   modoAtual.value = modo
 
@@ -450,7 +450,7 @@ const alterarModoFeed = async (modo) => {
   }
 
   .content-layout {
-  display: flex; /* Coloca sidebar e conteúdo lado a lado */
+  display: flex;
   gap: 20px;
   max-width: 1400px;
   margin: 0 auto;
@@ -458,7 +458,7 @@ const alterarModoFeed = async (modo) => {
 }
 
 .main-content {
-  flex: 1; /* Faz o feed ocupar todo o espaço restante */
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -466,10 +466,10 @@ const alterarModoFeed = async (modo) => {
 
 .content-layout {
   display: flex;
-  transition: padding-left 0.3s ease; /* Transição suave do empurrão */
+  transition: padding-left 0.3s ease; 
 }
 
-/* Se a sidebar estiver aberta, empurramos o conteúdo em telas grandes */
+/* Se a sidebar estiver aberta, empurra o conteúdo em telas grandes */
 @media (min-width: 1024px) {
   .content-layout.sidebar-open {
     padding-left: 280px; 

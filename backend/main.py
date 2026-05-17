@@ -57,7 +57,7 @@ app = FastAPI(tittle="Trackland News API")
 # Configuração do CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins = ["*"],   # Em produção, vou colocar o link do site aqui
+    allow_origins = ["*"],
     allow_credentials = True,
     allow_methods=["*"], # Permite GET, POST, PUT, DELETE, etc.
     allow_headers=["*"], # Permite todos os cabeçalhos (como o de Autenticação)
@@ -66,12 +66,12 @@ app.add_middleware(
 
 @app.post("/register", response_model=schemas.UserResponse)
 def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    # 1. Verificar se o e-mail já existe
+    #  Verificar se o e-mail já existe
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if db_user:
         raise HTTPException(status_code=400, detail="E-mail já cadastrado")
     
-    # 2. Criptografar a senha
+    #  Criptografar a senha
     hashed_password = pwd_context.hash(user.password)
 
     #Criar o objeto do usuário
@@ -81,7 +81,7 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
         preferences=getattr(user, 'preferences', 'tecnologia')
     )
 
-    #4 Salvar no Banco
+    # Salvar no Banco
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
@@ -89,35 +89,35 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
 
 @app.post("/login",response_model=schemas.Token)
 def login(user_credentials: schemas.UserCreate, db: Session = Depends(get_db)):
-    # 1. Busca o usuário no banco pelo e-mail
+    #  Busca o usuário no banco pelo e-mail
     user = db.query(models.User).filter(models.User.email == user_credentials.email).first()
 
-    #2. Se não achar usuário no banco
+    # Se não achar usuário no banco
     if not user or not pwd_context.verify(user_credentials.password, user.hashed_password):
         raise HTTPException(
             status_code=401,
             detail="E-mail ou senha inválidos"
         )
     
-    #4. Gera o Token
+    # Gera o Token
     token = create_acess_token(data={"sub": str(user.id)})
 
-    #5. Retorna o Token único
+    # Retorna o Token único
     return {"access_token":token, "token_type": "bearer"}
 
 
 @app.put("/preferences/{user_id}")
 def update_preferences(user_id: int, pref: schemas.UserPreferences, db: Session = Depends(get_db)):
-    #1. Busca o usuário pelo ID
+    # Busca o usuário pelo ID
     db_user = db.query(models.User).filter(models.User.id == user_id).first()
 
     if not db_user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
     
-    #2. Converte a lista em uma string
+    # Converte a lista em uma string
     preferences_string = ", ".join(pref.categories)
 
-    #3. Atualiza o campo no banco
+    # Atualiza o campo no banco
     db_user.preferences = preferences_string
     db.commit()
     db.refresh(db_user)
@@ -132,11 +132,11 @@ def get_user_feed(
     search: Optional[str] = None,
     current_user: models.User = Depends(get_current_user)
 ):
-    # 1. Define a lógica de busca direto no termo
+    #  Define a lógica de busca direto no termo
     # Prioridade: 1º Busca manual, 2º Categoria/Tag, 3º Preferências vindas do banco
     termo_de_busca = search or category or current_user.preferences
 
-    # 2. Chama o serviço de notícias criado
+    #  Chama o serviço de notícias criado
     noticias = services.fetch_news_by_preferences(termo=termo_de_busca, page=page, size=size)
 
     return {
@@ -167,7 +167,7 @@ def add_to_history(history_data: schemas.HistoryCreate, current_user: models.Use
     db.refresh(new_history)
     return new_history
 
-#2. Rota para listar o histórico do usuário logado
+# Rota para listar o histórico do usuário logado
 @app.get("/history", response_model=list[schemas.History])
 def get_user_history(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     #Retorna o hitórico do mais recente para o mais antigo
@@ -179,13 +179,13 @@ def add_favorite(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user) #Apenas para quem estiver logado
 ):
-    #1. Cria o objeto do banco com o ID do usuário logado
+    # Cria o objeto do banco com o ID do usuário logado
     db_favorite = models.Favorite(
         **favorite.dict(),
         user_id = current_user.id
     )
 
-    #2. Salva no banco
+    # Salva no banco
     db.add(db_favorite)
     db.commit()
     db.refresh(db_favorite)

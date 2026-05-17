@@ -28,6 +28,7 @@ defineEmits(['toggle-fav']);
 
 const API_URL = 'http://localhost:8000';
 
+// Registro das notícias lidas no histórico
 const registrarNoHistorico = async () => {
   try {
     const token = localStorage.getItem('token');
