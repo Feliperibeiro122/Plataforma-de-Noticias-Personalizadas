@@ -22,6 +22,24 @@
           <li class="menu-item" @click="navegar('historico')">
             <span class="menu-icon">↺</span> Histórico de Leitura
           </li>
+
+          <div class="sidebar-preferences" style="margin-top: 30px; padding: 15px; border-top: 1px solid #334155;">
+            <h3 style="font-size: 0.9rem; color: #4ef2d2; margin-bottom: 10px; text-transform: uppercase;">Minhas Preferências</h3>
+
+            <input 
+              type="text" 
+              v-model="novasPrefs" 
+              placeholder="Ex: tech, games, science"
+              style="font-size: 0.85rem; padding: 8px; margin-bottom: 10px;"
+            />
+            
+            <button 
+              @click="salvarPreferencias" 
+              style="padding: 8px; font-size: 0.85rem; background: #6366f1;"
+            >
+              Salvar Interesses
+            </button>
+          </div>
         </ul>
       </div>
     </aside>
@@ -29,6 +47,72 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
+import axios from 'axios'
+
+const novasPrefs = ref('')
+const API_URL = "http://127.0.0.1:8000"
+
+const salvarPreferencias = async () => {
+  const token = localStorage.getItem('token')
+
+  if (!token) {
+    alert("Usuário não autenticado. Faça login novamente.")
+    return
+  }
+
+  // ESTRATÉGIA NOVA: Decodificar o ID do usuário direto do Token JWT
+  let userId = null
+  try {
+    // O JWT é dividido por pontos: header.payload.signature
+    // Pegamos a segunda parte (o payload) e decodificamos da base64
+    const base64Url = token.split('.')[1]
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+    const payloadJson = JSON.parse(window.atob(base64))
+    
+    // Geralmente o ID vem na chave 'sub' ou 'user_id' dentro do JWT do FastAPI
+    userId = payloadJson.sub || payloadJson.user_id
+  } catch (e) {
+    console.error("Erro ao decodificar o token:", e)
+  }
+
+  // Se mesmo assim não achar o ID, tenta o plano B do localStorage
+  if (!userId) {
+    userId = localStorage.getItem('userId')
+  }
+
+  // Se ainda for nulo, avisa o usuário
+  if (!userId) {
+    alert("Não foi possível identificar o ID do usuário pelo token.")
+    return
+  }
+
+  if (!novasPrefs.value.trim()) {
+    alert("Digite pelo menos uma preferência!")
+    return
+  }
+
+  // Trata o texto digitado transformando em Array
+  const listaCategorias = novasPrefs.value
+    .split(',')
+    .map(item => item.trim())
+    .filter(item => item !== '')
+
+  try {
+    // Dispara o PUT com o ID numérico correto extraído do Token
+    const response = await axios.put(
+      `${API_URL}/preferences/${parseInt(userId, 10)}`, 
+      { categories: listaCategorias }, 
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+    
+    alert("Preferências atualizadas com sucesso! 🎉")
+  } catch (error) {
+    console.error("Erro ao salvar preferências:", error)
+    alert(error.response?.data?.detail || "Erro 422: Verifique o formato enviado.")
+  }
+}
+
 defineProps(['isOpen']); // Não precisamos mais passar as listas de dados para cá
 const emit = defineEmits(['toggle', 'mudar-feed']);
 

@@ -1,6 +1,12 @@
 <template>
   <div class="news-card">
     <h3 class="neon-text-small">{{ item.title }}</h3>
+
+    <div class="news-meta" style="font-size: 0.8rem; color: #888;margin-bottom: 10px;">
+      <span class="source">📰 {{ item.fonte || item.source?.name }}</span>
+      <span class="date">📅 {{ formatarData(item.dataPublicacao || item.publishedAt) }}</span>
+    </div>
+
     <p>{{ item.description }}</p>
 
     <div class="card-actions">
@@ -37,6 +43,12 @@ const registrarNoHistorico = async () => {
   } catch(error) {
     console.error("Erro ao registrar no histórico:", error);
   }
+}
+
+const formatarData = (dataIso) => {
+  if (!dataIso) return '';
+  const data = new Date(dataIso);
+  return data.toLocaleDateString('pt-BR');
 }
 </script>
 

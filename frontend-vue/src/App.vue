@@ -14,6 +14,9 @@ onMounted(async () => {
   window.onscroll = () => {
 
     if (modoAtual.value !== 'geral') return; 
+
+    if (noticia.value.length === 0)
+    return;
     // Detecta se chegou no fim da página (com margem de 100px)
     let bottomOfWindow = document.documentElement.scrollTop + window.innerHeight >= document.documentElement.offsetHeight - 100;
 
@@ -32,7 +35,8 @@ onMounted(async () => {
 });
 
 const logout = () => {
-  localStorage.removeItem('token'); 
+  localStorage.removeItem('token');
+  localStorage.removeItem('userId') 
   isLoggedIn.value = false;         
   noticias.value = [];              
 };
@@ -77,8 +81,13 @@ const handleAuth = async () => {
 
     const {data} = await axios.post(`${API_URL}${endpoint}`, payload)
 
+
     if (isLogin.value) {
       localStorage.setItem('token', data.access_token)
+      const idParaSalvar = data.user_id || data.id || data.user?.id
+      if (idParaSalvar) {
+        localStorage.setItem('userId', idParaSalvar)
+      }
       alert("Login realizado com sucesso!")
       await carregarFeed() 
       isLoggedIn.value = true 
@@ -113,6 +122,10 @@ const carregarFeed = async (filtros = {}, novaBusca = false) => {
     if (filtros.search) params.append('search', filtros.search);
     if (filtros.category) params.append('category', filtros.category);
 
+    if (filtros.dateFrom) params.append('from', filtros.dateFrom);
+    if (filtros.dateTo) params.append('to', filtros.dateTo);
+    if (filtros.source) params.append('source', filtros.source);
+
     const queryString = params.toString();
     // A interrogação DEVE estar ali se houver query string
     const urlFinal = queryString ? `${API_URL}/feed?${queryString}` : `${API_URL}/feed`;
@@ -134,7 +147,11 @@ const carregarFeed = async (filtros = {}, novaBusca = false) => {
     noticias.value = Array.isArray(novasNoticiasRaw) 
       ? novasNoticiasRaw.map(noticia => {
           const jaFavoritado = meusFavoritos.some(fav => fav.url === noticia.url);
-          return { ...noticia, favorito: jaFavoritado };
+          return { 
+            ...noticia,
+            fonte: noticia.source?.name || 'Fonte desconhecida',
+            dataPublicacao: noticia.publishedAt, 
+            favorito: jaFavoritado };
         })
       : [];
 
@@ -268,12 +285,18 @@ const alterarModoFeed = async (modo) => {
             </template>
 
             <template v-else>
-              <NewsCard 
-                v-for="(noticia, index) in noticias" 
-                :key="noticia.id || (noticia.url + '-' + index)" 
-                :item="noticia"
-                @toggle-fav="toggleFavorito"
-              />
+              <template v-if="noticias.length > 0">
+                <NewsCard 
+                  v-for="(noticia, index) in noticias" 
+                  :key="noticia.id || (noticia.url + '-' + index)" 
+                  :item="noticia"
+                  @toggle-fav="toggleFavorito"
+                />
+              </template>
+              
+              <div v-else class="empty-state neon-text-small" style="grid-column: 1 / -1; text-align: center; margin: 2rem;">
+                Nenhuma notícia encontrada para essa busca ou filtro. Tente outra vez!
+              </div>
             </template>
           </div>
         </main>
