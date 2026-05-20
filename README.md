@@ -1,4 +1,4 @@
-# Plataforma de Notícias Personalizadas 🦎⚡
+# Plataforma de Notícias Personalizadas 
 
 Aplicação full-stack desenvolvida como solução para o teste técnico da Trackland. O sistema consiste em um agregador de notícias com estética Cyberpunk/Neon que consome a NewsAPI, oferecendo uma experiência customizada de acordo com os interesses salvos de cada usuário.
 
