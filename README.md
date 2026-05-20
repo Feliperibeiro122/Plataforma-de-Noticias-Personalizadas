@@ -1,6 +1,6 @@
 # Plataforma de Notícias Personalizadas 
 
-Aplicação full-stack desenvolvida como solução para o teste técnico da Trackland. O sistema consiste em um agregador de notícias com estética Cyberpunk/Neon que consome a NewsAPI, oferecendo uma experiência customizada de acordo com os interesses salvos de cada usuário.
+Aplicação full-stack desenvolvida como solução para o teste técnico da Trackland. O sistema consiste em um agregador de notícias que consome a NewsAPI, oferecendo uma experiência customizada de acordo com os interesses salvos de cada usuário.
 
 ## 🛠️ Tecnologias Utilizadas
 
@@ -63,7 +63,7 @@ Acesse o painel no endereço local fornecido pelo Vite (geralmente http://localh
 
 Acesse a documentação interativa em: http://127.0.0.1:8000/docs
 
-⚡ Funcionalidades Implementadas
+ Funcionalidades Implementadas
 [x] Autenticação Segura: Sistema de Cadastro e Login de usuários utilizando criptografia de senhas (hashing) e persistência de sessão via tokens JWT.
 
 [x] Gerenciamento de Interesses: Painel dinâmico na Barra Lateral que permite ao usuário cadastrar, ler e editar suas categorias de interesse a qualquer momento, persistindo as mudanças direto no SQLite.
